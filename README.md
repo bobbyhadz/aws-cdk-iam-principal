@@ -1,7 +1,7 @@
-# AWS CDK IAM Role Example - Complete Guide
+# IAM Principal Examples in AWS CDK - Complete Guide
 
 A repository for an article on
-[bobbyhadz.com](https://bobbyhadz.com/blog/aws-cdk-iam-role)
+[bobbyhadz.com](https://bobbyhadz.com/blog/aws-cdk-iam-principal)
 
 ## How to Use
 

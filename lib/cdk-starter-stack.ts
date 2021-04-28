@@ -5,65 +5,93 @@ export class CdkStarterStack extends cdk.Stack {
   constructor(scope: cdk.App, id: string, props?: cdk.StackProps) {
     super(scope, id, props);
 
-    // 👇 Create ACM Permission Policy
-    const describeAcmCertificates = new iam.PolicyDocument({
-      statements: [
-        new iam.PolicyStatement({
-          resources: ['arn:aws:acm:*:*:certificate/*'],
-          actions: ['acm:DescribeCertificate'],
-        }),
-      ],
+    // 👇 Create a role with a Service Principal
+    const role1 = new iam.Role(this, 'role-1', {
+      assumedBy: new iam.ServicePrincipal('lambda.amazonaws.com'),
     });
 
-    // 👇 Create role
-    const role = new iam.Role(this, 'example-iam-role', {
-      assumedBy: new iam.ServicePrincipal('apigateway.amazonaws.com'),
-      description: 'An example IAM role in AWS CDK',
-      // 👇 created with the role, whereas `addToPolicy` ones are added via a separate CloudFormation reosurce ( allows us to avoid circular dependencies )
-      inlinePolicies: {
-        DescribeACMCerts: describeAcmCertificates,
-      },
-      managedPolicies: [
-        iam.ManagedPolicy.fromAwsManagedPolicyName(
-          'AmazonAPIGatewayInvokeFullAccess',
-        ),
-      ],
+    const policy1 = new iam.PolicyStatement({
+      resources: ['arn:aws:logs:*:*:log-group:/aws/lambda/*'],
+      actions: ['logs:FilterLogEvents'],
+    });
+    // 👇 add a service principal to the policy
+    policy1.addServicePrincipal('ec2.amazonaws.com');
+
+    // 👇 create a role with an AWS Account principal
+    const role2 = new iam.Role(this, 'role-2', {
+      assumedBy: new iam.AccountPrincipal(cdk.Stack.of(this).account),
     });
 
-    // 👇 add an Inline Policy to role
-    role.addToPolicy(
-      new iam.PolicyStatement({
-        actions: ['logs:CreateLogGroup', 'logs:CreateLogStream'],
-        resources: ['*'],
-      }),
-    );
+    // 👇 create a role with an Account Root Principal
+    const role3 = new iam.Role(this, 'role-3', {
+      assumedBy: new iam.AccountRootPrincipal(),
+    });
 
-    // 👇 add a Managed Policy to role
-    role.addManagedPolicy(
-      iam.ManagedPolicy.fromAwsManagedPolicyName(
-        'service-role/AmazonAPIGatewayPushToCloudWatchLogs',
+    // 👇 create a role with an ARN Principal
+    // const role4 = new iam.Role(this, 'role-4', {
+    //   assumedBy: new iam.ArnPrincipal(
+    //     `arn:aws:iam::${cdk.Stack.of(this).account}:user/YOUR_USER_NAME`,
+    //   ),
+    // });
+
+    // 👇 create a policy with Any Principal
+    const policy2 = new iam.PolicyStatement({
+      resources: ['*'],
+      actions: ['s3:*'],
+      effect: iam.Effect.DENY,
+      principals: [new iam.AnyPrincipal()],
+    });
+
+    // 👇 create a role with PrincipalWithConditions
+    const role4 = new iam.Role(this, 'role-4', {
+      assumedBy: new iam.PrincipalWithConditions(
+        new iam.AccountRootPrincipal(),
+        {
+          Bool: {
+            'aws:MultiFactorAuthPresent': true,
+            'aws:SecureTransport': true,
+          },
+          NumericLessThan: {
+            'aws:MultiFactorAuthAge': 300,
+          },
+        },
       ),
-    );
+    });
 
-    // 👇 attach an Inline Policy to role
-    role.attachInlinePolicy(
-      new iam.Policy(this, 'cw-logs', {
-        statements: [
-          new iam.PolicyStatement({
-            actions: ['logs:PutLogEvents'],
-            resources: ['*'],
-          }),
-        ],
-      }),
-    );
+    // 👇 create a role with WebIdentityPrincipal
+    // const role5 = new iam.Role(this, 'role-5', {
+    //   assumedBy: new iam.WebIdentityPrincipal(
+    //     'cognito-identity.amazonaws.com',
+    //     {
+    //       StringEquals: {
+    //         'cognito-identity.amazonaws.com:aud': identityPool.ref,
+    //       },
+    //       'ForAnyValue:StringLike': {
+    //         'cognito-identity.amazonaws.com:amr': 'authenticated',
+    //       },
+    //     },
+    //   ),
+    // });
 
-    // 👇 Add the Lambda service as a Principal
-    role.assumeRolePolicy?.addStatements(
-      new iam.PolicyStatement({
-        actions: ['sts:AssumeRole'],
-        effect: iam.Effect.ALLOW,
-        principals: [new iam.ServicePrincipal('lambda.amazonaws.com')],
-      }),
-    );
+    // 👇 create a role with FederatedPrincipal
+    // const role6 = new iam.Role(this, 'role-6', {
+    //   assumedBy: new iam.FederatedPrincipal(
+    //     'cognito-identity.amazonaws.com',
+    //     {
+    //       StringEquals: {
+    //         'cognito-identity.amazonaws.com:aud': identityPool.ref,
+    //       },
+    //       'ForAnyValue:StringLike': {
+    //         'cognito-identity.amazonaws.com:amr': 'authenticated',
+    //       },
+    //     },
+    //     'sts:AssumeRoleWithWebIdentity',
+    //   ),
+    // });
+
+    // 👇 create a role with an OrganizationPrincipal
+    const role7 = new iam.Role(this, 'role-7', {
+      assumedBy: new iam.OrganizationPrincipal('o-123asdf'),
+    });
   }
 }
